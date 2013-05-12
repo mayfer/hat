@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+import daemon
 from optparse import make_option, OptionParser
 from messenger import Connection
 import os
@@ -16,7 +16,7 @@ class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("templates/index.html", STATIC_URL=STATIC_URL)
 
-def runloop(addr, port, xheaders, no_keep_alive, use_reloader):
+def runloop(addr, port, xheaders, no_keep_alive, use_reloader, daemonize=False):
     router = SockJSRouter(Connection, '/updates')
     handlers = [
         (r'/', MainHandler),
@@ -30,21 +30,24 @@ def runloop(addr, port, xheaders, no_keep_alive, use_reloader):
     http_server.listen(int(port), address=addr)
 
     main_loop = tornado.ioloop.IOLoop.instance()
-    try:
-        print "Runing on :{port}".format(port=port)
-        main_loop.start()
-
-    except KeyboardInterrupt:
-        print "Stopped"
-        sys.exit(0)
 
     if use_reloader:
         # Use tornado reload to handle IOLoop restarting.
         from tornado import autoreload
         autoreload.start()
 
-    quit_command = (sys.platform == 'win32') and 'CTRL-BREAK' or 'CONTROL-C'
-    print quit_command + " to quit."
+    try:
+        print "Runing on :{port}".format(port=port)
+        if daemonize is True:
+            log = open('hat.log', 'a+')
+            ctx = daemon.DaemonContext(stdout=log, stderr=log, working_directory='.')
+            ctx.open()
+        main_loop.start()
+
+    except KeyboardInterrupt:
+        print "Stopped"
+        sys.exit(0)
+
 
 def init():
     option_list = (
@@ -62,6 +65,9 @@ def init():
         make_option('--nokeepalive', action='store_true',
             dest='no_keep_alive', default=False,
             help="Tells Tornado to NOT keep alive http connections."),
+        make_option('--daemonize', action='store_true',
+            dest='daemonize', default=False,
+            help="Run tornado in the background."),
     )
     parser = OptionParser(option_list=option_list)
     (options, args) = parser.parse_args()
@@ -73,14 +79,7 @@ def init():
     if not port.isdigit():
         raise CommandError("%r is not a valid port number." % port)
 
-    use_reloader = options.use_reloader
-
-    serve_admin_media = options.admin_media
-
-    xheaders = options.xheaders
-    no_keep_alive = options.no_keep_alive
-
-    runloop(addr, port, xheaders, no_keep_alive, use_reloader)
+    runloop(addr, port, options.xheaders, options.no_keep_alive, options.use_reloader, options.daemonize)
 
 
 if __name__ == "__main__":

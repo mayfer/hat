@@ -23,8 +23,8 @@
 
                 intro.on('click', function(e) {
                     $(intro).hide();
-                    $('#hat-game').css('min-height', Math.min($(window).outerHeight()-1, 1250));
-                    $('#hat-game').css('min-width', Math.min($(window).outerWidth()-1, 1750));
+                    $('#hat-game').css('min-height', Math.min($('body').innerHeight(), 1250));
+                    $('#hat-game').css('min-width', Math.min($('body').innerWidth(), 1750));
                     
                     canvas = new gameCanvas($('#hat-game'), 0, 0, 10, 1000, 1000);
                     networking = new Networking(canvas);
